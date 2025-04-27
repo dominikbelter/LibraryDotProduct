@@ -36,7 +36,7 @@ namespace tutorial {
             virtual const Type& getType() const {return type;}
 
             /// move to goal configuration
-            virtual float dotProduct(const std::vector<float>& a, const std::vector<float>& b) = 0;
+            virtual double dotProduct(const std::vector<double>& a, const std::vector<double>& b) = 0;
 
             /// Virtual descrutor
             virtual ~DotProduct() {}

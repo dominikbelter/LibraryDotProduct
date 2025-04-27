@@ -10,6 +10,10 @@
 
 #include "dotProduct.h"
 #include <memory>
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
 
 class DotProductCPU : public tutorial::DotProduct {
 
@@ -22,7 +26,12 @@ public:
     DotProductCPU(void);
 
     /// dot product
-    float dotProduct(const std::vector<float>& a, const std::vector<float>& b);
+    double dotProduct(const std::vector<double>& a, const std::vector<double>& b);
+
+    /// dot product
+    double dotProduct_pyarray(const py::array_t<double>& a, const py::array_t<double>& b);
+
+    virtual ~DotProductCPU() = default;
 
 protected:
 

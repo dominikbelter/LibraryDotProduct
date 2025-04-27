@@ -18,36 +18,15 @@ INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/include")
 # core libraries
 option(BUILD_LIB_DOTPRODUCT "Build Lib DotProduct" ON)
 mark_as_advanced(BUILD_LIB_DOTPRODUCT)
-option(BUILD_WITH_CUDA "Build with NVidia CUDA" OFF)
-mark_as_advanced(BUILD_WITH_CUDA)
-if(BUILD_WITH_CUDA)
-    add_definitions(-DBUILD_WITH_CUDA)
-endif(BUILD_WITH_CUDA)
 
 # demos
 option(BUILD_LIB_DOTPRODUCT_DEMO "Build LIB DotProduct Demo" ON)
 mark_as_advanced(BUILD_LIB_DOTPRODUCT_DEMO)
 
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+include_directories(${Python3_INCLUDE_DIRS})
 
-if(BUILD_WITH_CUDA)
-    # Figure out CUDA version
-    if(CMAKE_CUDA_COMPILER_LOADED)
-            if (CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA" AND CMAKE_CUDA_COMPILER_VERSION MATCHES "^([0-9]+\\.[0-9]+)")
-                    set(CUDA_VERSION "${CMAKE_MATCH_1}")
-            endif()
-    endif()
-    # CUDA flags
-   set(CMAKE_CUDA_ARCHITECTURES 86)
-#    set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
-    project(DOTPRODUCT_LIBRARY LANGUAGES CXX CUDA)
-    enable_language(CUDA)
-
-    find_package(CUDAToolkit REQUIRED)
-    # Check CUDA version
-    if (CUDAToolkit_VERSION VERSION_LESS "11.7")
-        message(FATAL_ERROR "This project requires CUDA 11.7 or higher")
-    endif ()
-endif(BUILD_WITH_CUDA)
+find_package(pybind11 REQUIRED)
 
 # Executable output directory
 SET(RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/bin${OUTPUT_DIRECTORY_POSTFIX} CACHE PATH "Executable output directory")
@@ -131,22 +110,27 @@ if(BUILD_LIB_DOTPRODUCT)
         file(GLOB DOTPRODUCT_SOURCES
             "${CMAKE_SOURCE_DIR}/src/DotProduct/*.cpp"
         )
-        file(GLOB DOTPRODUCT_CUDA_SOURCES
-            "${CMAKE_SOURCE_DIR}/src/DotProduct/*.cu"
-        )
         file(GLOB DOTPRODUCT_HEADERS
             "${CMAKE_SOURCE_DIR}/include/DotProduct/*.h"
         )
 
-        if(BUILD_WITH_CUDA)
-            ADD_LIBRARY(DotProduct STATIC ${DOTPRODUCT_SOURCES} ${DOTPRODUCT_CUDA_SOURCES} ${DOTPRODUCT_HEADERS})
-        else(BUILD_WITH_CUDA)
-            ADD_LIBRARY(DotProduct STATIC ${DOTPRODUCT_SOURCES} ${DOTPRODUCT_HEADERS})
-        endif(BUILD_WITH_CUDA)
+        ADD_LIBRARY(DotProduct STATIC ${DOTPRODUCT_SOURCES} ${DOTPRODUCT_HEADERS})
 #        TARGET_LINK_LIBRARIES(DotProduct Utilities)
         INSTALL(TARGETS DotProduct RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION lib)
         INSTALL(FILES ${DOTPRODUCT_HEADERS} DESTINATION include/DotProduct/)
 endif(BUILD_LIB_DOTPRODUCT)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Compile it with position independent code
+target_compile_options(DotProduct PRIVATE -fPIC)
+
+# Create Python module
+pybind11_add_module(DotProductModule
+    bindings/bindings.cpp
+)
+
+target_link_libraries(DotProductModule PRIVATE DotProduct)
 
 ###############################################################################
 #
@@ -157,6 +141,6 @@ endif(BUILD_LIB_DOTPRODUCT)
 if(BUILD_LIB_DOTPRODUCT_DEMO)
         SET(DEMO_SOURCES ./main.cpp)
         ADD_EXECUTABLE(dotProductTest ${DEMO_SOURCES})
-        TARGET_LINK_LIBRARIES(dotProductTest DotProduct)
+        TARGET_LINK_LIBRARIES(dotProductTest DotProduct Python3::Python)
         INSTALL(TARGETS dotProductTest RUNTIME DESTINATION bin)
 endif(BUILD_LIB_DOTPRODUCT_DEMO)
